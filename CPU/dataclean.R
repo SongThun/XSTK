@@ -79,7 +79,7 @@ df['eDP_frequency'] <- factor(sapply(df$Max_Resolution_eDP_Integrated_Flat_Panel
 
 
 unique(df$PCI_Express_Revision)
-df$PCI_Express_Revision <- factor(sapply(df$PCI_Express_Revision, highest_pci), levels=c(3, 2, 1, 0))
+df$PCI_Express_Revision <- factor(sapply(df$PCI_Express_Revision, latest_pci), levels=c(3, 2, 1, 0))
 
 df$T <- sapply(df$T, temperature_extract)
 unique(df$PCI_Express_Configurations_)
@@ -87,3 +87,5 @@ unique(df$PCI_Express_Configurations_)
 df$PCI_Express_Configurations_ <- factor(sapply(df$PCI_Express_Configurations_, configuration_extract))
 unique(df$PCI_Express_Configurations_)
 
+unique(df$DirectX_Support)
+df$DirectX_Support <- factor(sapply(df$DirectX_Support, latest_directX_version))

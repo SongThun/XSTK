@@ -87,7 +87,7 @@ resolution_freq_extract <- function(string) {
   return (freq)  
 }
 
-highest_pci <- function(string) {
+latest_pci <- function(string) {
   if (string == 'N/A' || string == '') return (NA)
   if (string == 'No' || string == 'None') return (0)
   if (grepl('1.0', string)) return (1)
@@ -95,6 +95,13 @@ highest_pci <- function(string) {
   return (2)
 }
 
+latest_directX_version <- function(string) {
+  if (string == 'N/A' || string == '') return (NA)
+  if (string == 'Yes') return (NA) # for later data fill (ex: mode filled)
+  if (grepl('12', string)) return ('12')
+  if (grepl('\\d+.\\d', string)) return (str_extract(string, '\\d+.\\d'))
+  
+}
 temperature_extract <- function(string) {
   if (string == 'N/A' || string == '') return (NA)
   temp <- as.numeric(unlist((str_extract_all(string, '\\d+\\.*\\d*'))))
