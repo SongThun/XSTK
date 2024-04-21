@@ -84,6 +84,15 @@ clean_max_memory_size <- function(string){
   return(digits)
 }
 
+mem_type_extract <- function(string) {
+  if (is.na(string)) return (NA)
+  ans <- ''
+  if (grepl('LPDDR', string)) ans <- paste0(ans, 'Low_power')
+  if (grepl('DDR\\dL', string)) ans <- paste(ans, 'Low_voltage')
+  if (grepl('DDR', string)) ans <- paste(ans, 'Standard')
+  return (ans)
+}
+
 boolean_convert <- function(df, col) {
   df[[col]] <- factor(case_when(
     df[[col]] == 'Yes' ~ TRUE,
@@ -273,6 +282,9 @@ df$Max_Memory_Size <- sapply(df$Max_Memory_Size, clean_max_memory_size)
 df$Max_Memory_Size <- gsub(" GB", '', df$Max_Memory_Size)
 df$Max_Memory_Size <- as.numeric(df$Max_Memory_Size)
 
+df$Memory_Types <- sapply(df$Memory_Types, mem_type_extract)
+head(df)
+
 df$Max_Memory_Bandwidth <- gsub(" GB/s", '', df$Max_Memory_Bandwidth)
 df$Max_Memory_Bandwidth <- as.numeric(df$Max_Memory_Bandwidth)
 
@@ -338,22 +350,52 @@ get_mode <- function(x) {
   return(mode_val)
 }
 
-fill_na <- function(df) {
-  for (col in names(df)) {
-    if (is.numeric(df[[col]])) {
-      median_val <- median(df[[col]], na.rm = TRUE)
-      df[[col]][is.na(df[[col]])] <- median_val
+# fill_na <- function(df) {
+#   for (col in names(df)) {
+#     if (is.numeric(df[[col]])) {
+#       median_val <- median(df[[col]], na.rm = TRUE)
+#       df[[col]][is.na(df[[col]])] <- median_val
+#     } else {
+#       mode_val <- as.character(get_mode(df[[col]]))
+#       #cat(col, " ", mode_val, "\n")
+#       df[[col]][is.na(df[[col]])] <- mode_val
+#     }
+#   }
+#   return(df)
+# }
+# options(dplyr.width = Inf)
+# df <- fill_na(df)
+# apply(is.na(df),2,mean)
+
+impute <- function(data, col) {
+  # Check if the specified column contains missing values
+  if (any(is.na(data[[col]]))) {
+    if (is.numeric(data[[col]])) {
+      # If the column is numeric, impute using KNN
+      train <- data[!is.na(data[[col]]), ]
+      test <- data[is.na(data[[col]]), ]
+      
+      if (nrow(test) > 0) {
+        model <- kknn(as.formula(paste(col, "~ .")), train, test, k = 5) 
+        imputed_values <- fitted(model)
+        data[is.na(data[[col]]), col] <- imputed_values
+      } else {
+        print("No missing values to impute.")
+      }
     } else {
-      mode_val <- as.character(get_mode(df[[col]]))
-      #cat(col, " ", mode_val, "\n")
-      df[[col]][is.na(df[[col]])] <- mode_val
+      # If the column is categorical, impute using the mode
+      mode_val <- as.character(get_mode(data[[col]]))
+      data[[col]][is.na(data[[col]])] <- mode_val
     }
+  } else {
+    print("Column has no missing values.")
   }
-  return(df)
+  return(data)
 }
-options(dplyr.width = Inf)
-df <- fill_na(df)
-apply(is.na(df),2,mean)
+
+for (col in names(df)){
+  df <- impute(df, col)
+}
 
 # Select 80% data as the train set and 20% as test set
 s <-sample(seq_len(nrow(df)), size = floor(0.8*nrow(df)))
