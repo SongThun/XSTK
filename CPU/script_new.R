@@ -213,10 +213,11 @@ latest_directX_version <- function(string) {
   if (grepl('\\d+.\\d', string)) return (str_extract(string, '\\d+.\\d'))
   
 }
+
 temperature_extract <- function(string) {
   temp <- as.numeric(unlist((str_extract_all(string, '\\d+\\.*\\d*'))))
   if (length(temp) == 2) return ((temp[2] + temp[1]) / 2)
-  return (temp)
+  return (temp[1])
 }
 
 custom_sort <- function(list) {
@@ -392,12 +393,13 @@ impute <- function(data, col) {
   }
   return(data)
 }
-
 for (col in names(df)){
   df <- impute(df, col)
 }
-
+str(df)
+sapply(df, levels)
 # Select 80% data as the train set and 20% as test set
+set.seed(5) # Make data reproducible
 s <-sample(seq_len(nrow(df)), size = floor(0.8*nrow(df)))
 train <-df[s, ]
 test <-df[-s, ]
