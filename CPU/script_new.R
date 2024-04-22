@@ -351,53 +351,23 @@ get_mode <- function(x) {
   return(mode_val)
 }
 
-# fill_na <- function(df) {
-#   for (col in names(df)) {
-#     if (is.numeric(df[[col]])) {
-#       median_val <- median(df[[col]], na.rm = TRUE)
-#       df[[col]][is.na(df[[col]])] <- median_val
-#     } else {
-#       mode_val <- as.character(get_mode(df[[col]]))
-#       #cat(col, " ", mode_val, "\n")
-#       df[[col]][is.na(df[[col]])] <- mode_val
-#     }
-#   }
-#   return(df)
-# }
-# options(dplyr.width = Inf)
-# df <- fill_na(df)
-# apply(is.na(df),2,mean)
-
-impute <- function(data, col) {
-  # Check if the specified column contains missing values
-  if (any(is.na(data[[col]]))) {
-    if (is.numeric(data[[col]])) {
-      # If the column is numeric, impute using KNN
-      train <- data[!is.na(data[[col]]), ]
-      test <- data[is.na(data[[col]]), ]
-      
-      if (nrow(test) > 0) {
-        model <- kknn(as.formula(paste(col, "~ .")), train, test, k = 5) 
-        imputed_values <- fitted(model)
-        data[is.na(data[[col]]), col] <- imputed_values
-      } else {
-        print("No missing values to impute.")
-      }
+fill_na <- function(df) {
+  for (col in names(df)) {
+    if (is.numeric(df[[col]])) {
+      median_val <- median(df[[col]], na.rm = TRUE)
+      df[[col]][is.na(df[[col]])] <- median_val
     } else {
-      # If the column is categorical, impute using the mode
-      mode_val <- as.character(get_mode(data[[col]]))
-      data[[col]][is.na(data[[col]])] <- mode_val
+      mode_val <- as.character(get_mode(df[[col]]))
+      #cat(col, " ", mode_val, "\n")
+      df[[col]][is.na(df[[col]])] <- mode_val
     }
-  } else {
-    print("Column has no missing values.")
   }
-  return(data)
+  return(df)
 }
-for (col in names(df)){
-  df <- impute(df, col)
-}
-str(df)
-sapply(df, levels)
+options(dplyr.width = Inf)
+df <- fill_na(df)
+apply(is.na(df),2,mean)
+
 # Select 80% data as the train set and 20% as test set
 set.seed(5) # Make data reproducible
 s <-sample(seq_len(nrow(df)), size = floor(0.8*nrow(df)))
