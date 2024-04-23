@@ -17,12 +17,10 @@ library('stringr')
 library('tidyr')
 library('kknn')
 
-df <- read.csv('Intel_CPUs.csv')
-
+df <- read.csv('Intel_CPUs.csv', na.strings = c('N/A', ''))
 str(df)
-
-df <- df %>% 
-  replace_with_na_all(condition = ~.x %in% common_na_strings)
+# df <- df %>% 
+#  replace_with_na_all(condition = ~.x %in% common_na_strings)
 
 apply(is.na(df),2,sum) # Count the number of NA in each column
 apply(is.na(df),2,mean) # Show the NA ratio
@@ -41,6 +39,10 @@ df <- df %>%
 df <- df %>%
   select(-Processor_Number #specify by producers, not contribute to the performance
   )
+
+# omitting Conflit_Free due to it only contains 'Yes' values
+df <- df %>%
+  select(-Conflict_Free)
 
 ######### DATA MODIFY ##########
 
@@ -69,12 +71,14 @@ convert_currency_to_numeric <- function(currency_string) {
   numeric_values <- as.numeric(numeric_strings)
   # If it's a range, take the mean, otherwise return the value
   if (length(numeric_values) > 1) {
+    # print(class(mean(numeric_values)))
     return(mean(numeric_values))
   } else {
+    # print(class(numeric_values))
     return(numeric_values)
   }
 }
-
+print(convert_currency_to_numeric("$345 - $625"))
 clean_max_memory_size <- function(string){
   digits <- as.numeric(substr(string, 1, nchar(string)-3))
   if (grepl("TB", string)) {
@@ -246,12 +250,12 @@ for (i in product_collect) {
   df$Product_Collection <- ifelse(grepl(i, df$Product_Collection), i, df$Product_Collection)
 }
 
-df$Launch_Date <- sapply(df$Launch_Date, convert_year)
+df$Launch_Date <- sapply(df$Launch_Date, convert_year, USE.NAMES = FALSE)
 
 df$Lithography <-gsub(" nm", '', df$Lithography)
 df$Lithography <- as.numeric(df$Lithography)
 
-df$Recommended_Customer_Price <- sapply(df$Recommended_Customer_Price, convert_currency_to_numeric)
+df$Recommended_Customer_Price <- sapply(df$Recommended_Customer_Price, convert_currency_to_numeric, USE.NAMES = FALSE)
 
 df$Processor_Base_Frequency <- sapply(df$Processor_Base_Frequency, clean_base_frequency)
 df$Processor_Base_Frequency <- gsub(" GHz", '', df$Processor_Base_Frequency)
@@ -277,7 +281,7 @@ df$TDP <- gsub(" W", '', df$TDP)
 df$TDP <- as.numeric(df$TDP)
 
 df <- boolean_convert(df, 'Embedded_Options_Available')
-df <- boolean_convert(df, 'Conflict_Free')
+#df$Conflict_Free <- ifelse(is.na(df$Conflict_Free), FALSE, TRUE)
 
 df$Max_Memory_Size <- sapply(df$Max_Memory_Size, clean_max_memory_size)
 df$Max_Memory_Size <- gsub(" GB", '', df$Max_Memory_Size)
@@ -332,11 +336,13 @@ df <- df %>% select(-Instruction_Set_Extensions)
 
 df$PCI_Express_Revision <- factor(sapply(df$PCI_Express_Revision, latest_pci), levels=c(3, 2, 1, 0))
 
-df$T <- sapply(df$T, temperature_extract)
+df$T <- sapply(df$T, temperature_extract, USE.NAMES = FALSE)
 
 df$PCI_Express_Configurations_ <- factor(sapply(df$PCI_Express_Configurations_, configuration_extract))
 
 #df$DirectX_Support <- factor(sapply(df$DirectX_Support, latest_directX_version))
+
+str(df)
 
 get_mode <- function(x) {
   ux <- unique(x)
@@ -367,6 +373,12 @@ fill_na <- function(df) {
 options(dplyr.width = Inf)
 df <- fill_na(df)
 apply(is.na(df),2,mean)
+
+# Linear regression
+model <- lm(Recommended_Customer_Price ~ ., data = df)
+summary(model)
+step_model <- step(model, direction='both')
+#df <- df %>% select(-Instruction_Set_Extensions)
 
 # Select 80% data as the train set and 20% as test set
 set.seed(5) # Make data reproducible
