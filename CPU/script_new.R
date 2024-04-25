@@ -216,20 +216,6 @@ for (col in names(imputed_knn)) {
 
 apply(is.na(df),2,mean)
 
-# Checking and removing the outliers
-numeric_columns <- sapply(df, is.numeric)
-numeric_data <- df[, numeric_columns]
-for (col in names(numeric_data)){
-  plot (df[[col]], df$Recommended_Customer_Price, xlab =col, ylab = "Recommended_Customer_Price")
-}
-
-dim(df)
-
-df <- remove_outliers(df, 'Graphics_Base_Frequency')
-df <- remove_outliers(df, 'Max_Memory_Size')
-
-dim(df)
-
 # Box plot for categorical columns
 box1<-boxplot(df$Recommended_Customer_Price~df$Product_Collection, xlab = "Product Collection", ylab = "Recommended Customer Price")$stats
 abline(lm(Recommended_Customer_Price~Product_Collection,data=df),col='blue')
@@ -303,32 +289,53 @@ SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
 # Polynomial regression
-poly2 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 2) + poly(nb_of_Threads, 2) + 
-              poly(Processor_Base_Frequency, 2) + poly(TDP, 2) + poly(Max_Memory_Size, 2) + 
-              poly(Max_Memory_Bandwidth, 2) + poly(Graphics_Max_Dynamic_Frequency, 2) + 
-              poly(Max_nb_of_PCI_Express_Lanes, 2) , data = df)
+poly2 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 2) + poly(Lithography, 2) + poly(nb_of_Cores, 2) +
+              poly(nb_of_Threads, 2) + poly(Processor_Base_Frequency, 2) + poly(Cache, 2) + poly(TDP, 2) + 
+              poly(Max_Memory_Size, 2) + poly(Max_Memory_Bandwidth, 2) + poly(Graphics_Base_Frequency, 2) +
+              poly(Instruction_Set, 2), data = df)
 summary(poly2)
 
-poly3 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 3) + poly(nb_of_Threads, 3) + 
-              poly(Processor_Base_Frequency, 3) + poly(TDP, 3) + poly(Max_Memory_Size, 3) + 
-              poly(Max_Memory_Bandwidth, 3) + poly(Graphics_Max_Dynamic_Frequency, 3) + 
-              poly(Max_nb_of_PCI_Express_Lanes, 3) , data = df)
+# Comparing predicted values with test values
+pred_values <- data.frame(predict(poly2, newdata = test))
+compare <- cbind(test$Recommended_Customer_Price, pred_values)
+
+MAPE <- mean(abs((compare[,1] - compare[,2]) / compare[,1])) * 100
+cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
+
+SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
+SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
+cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
+
+poly3 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 3) + poly(Lithography, 3) + poly(nb_of_Cores, 3) + 
+              poly(nb_of_Threads, 3) + poly(Processor_Base_Frequency, 3) + poly(TDP, 3) + poly(Cache, 3) +
+              poly(Max_Memory_Size, 3) + poly(Max_Memory_Bandwidth, 3) + poly(Graphics_Base_Frequency, 3) +
+              poly(Instruction_Set, 3), data = df)
 summary(poly3)
 
-poly4 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 4) + poly(nb_of_Threads, 4) + 
-              poly(Processor_Base_Frequency, 4) + poly(TDP, 4) + poly(Max_Memory_Size, 4) + 
-              poly(Max_Memory_Bandwidth, 4) + poly(Graphics_Max_Dynamic_Frequency, 4) + 
-              poly(Max_nb_of_PCI_Express_Lanes, 4) , data = df)
+# Comparing predicted values with test values
+pred_values <- data.frame(predict(poly3, newdata = test))
+compare <- cbind(test$Recommended_Customer_Price, pred_values)
+
+MAPE <- mean(abs((compare[,1] - compare[,2]) / compare[,1])) * 100
+cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
+
+SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
+SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
+cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
+
+poly4 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 4) + poly(Lithography, 4) + poly(nb_of_Cores, 4) + 
+              poly(nb_of_Threads, 4) + poly(Processor_Base_Frequency, 4) + poly(TDP, 4) + poly(Cache, 4) +
+              poly(Max_Memory_Size, 4) + poly(Max_Memory_Bandwidth, 4) + poly(Graphics_Base_Frequency, 4) +
+              poly(Instruction_Set, 4), data = df)
 summary(poly4)
 
 # Comparing predicted values with test values
-pred_values2 <- data.frame(predict(poly4, newdata = test))
-compare2 <- cbind(test$Recommended_Customer_Price, pred_values2)
-colnames(compare2) <- c("test_set","prediction")
-head(compare2,10)
+pred_values <- data.frame(predict(poly4, newdata = test))
+compare <- cbind(test$Recommended_Customer_Price, pred_values)
 
-SSE <- sum((df$Recommended_Customer_Price - pred_values2)^2)
+MAPE <- mean(abs((compare[,1] - compare[,2]) / compare[,1])) * 100
+cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
+
+SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
-cat("The accuracy of the model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
-
-str(df)
+cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
