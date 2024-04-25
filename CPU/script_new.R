@@ -6,7 +6,18 @@
 #install.packages('mice')
 #install.packages('stringr')
 #install.packages('kknn')
+#install.packages('car')
+#install.packages('ggpubr')
+#install.packages('nortest')
+#install.packages('caret')
+#install.packages("randomForest")
+#install.packages("missForest")
+#install.packages("VIM")
+#install.packages("FNN")
 
+
+library('ggpubr')
+library('car')
 library('dplyr')
 library('ggplot2')
 library('corrplot')
@@ -16,33 +27,21 @@ library('mice')
 library('stringr')
 library('tidyr')
 library('kknn')
+library('nortest')
+library('caret')
+library('randomForest')
+library('missForest')
+library('VIM')
+library('FNN')
 
-df <- read.csv('Intel_CPUs.csv', na.strings = c('N/A', ''))
+initial_df <- read.csv('Intel_CPUs.csv', na.strings = c('N/A', ''))
 str(df)
-# df <- df %>% 
-#  replace_with_na_all(condition = ~.x %in% common_na_strings)
 
-apply(is.na(df),2,sum) # Count the number of NA in each column
-apply(is.na(df),2,mean) # Show the NA ratio
-# omitting columns with all values are NA and NA ratio > 80% 
-df <- df %>% 
-  select(-Processor_Graphics_,
-         -Graphics_Video_Max_Memory,
-         -Support_4k,
-         -Max_Resolution_HDMI,
-         -Max_Resolution_DP,
-         -Max_Resolution_eDP_Integrated_Flat_Panel,
-         -DirectX_Support,
-         -OpenGL_Support)
-
-# omitting column with no use
-df <- df %>%
-  select(-Processor_Number #specify by producers, not contribute to the performance
-  )
-
-# omitting Conflit_Free due to it only contains 'Yes' values
-df <- df %>%
-  select(-Conflict_Free)
+# Selecting the important columns
+df <- initial_df[, c("Product_Collection","Vertical_Segment", "Status", "Launch_Date", 
+                    "Lithography", "Recommended_Customer_Price","nb_of_Cores", "nb_of_Threads","Processor_Base_Frequency",
+                    "Cache", "TDP", "Max_Memory_Size", "Max_Memory_Bandwidth", "Graphics_Base_Frequency", 
+                    "Intel_Hyper_Threading_Technology_", "Intel_Virtualization_Technology_VTx_", "Instruction_Set")]
 
 ######### DATA MODIFY ##########
 
@@ -71,14 +70,12 @@ convert_currency_to_numeric <- function(currency_string) {
   numeric_values <- as.numeric(numeric_strings)
   # If it's a range, take the mean, otherwise return the value
   if (length(numeric_values) > 1) {
-    # print(class(mean(numeric_values)))
     return(mean(numeric_values))
   } else {
-    # print(class(numeric_values))
     return(numeric_values)
   }
 }
-print(convert_currency_to_numeric("$345 - $625"))
+
 clean_max_memory_size <- function(string){
   digits <- as.numeric(substr(string, 1, nchar(string)-3))
   if (grepl("TB", string)) {
@@ -86,15 +83,6 @@ clean_max_memory_size <- function(string){
   }
   
   return(digits)
-}
-
-mem_type_extract <- function(string) {
-  if (is.na(string)) return (NA)
-  ans <- ''
-  if (grepl('LPDDR', string)) ans <- paste0(ans, 'Low_power')
-  if (grepl('DDR\\dL', string)) ans <- paste(ans, 'Low_voltage')
-  if (grepl('DDR', string)) ans <- paste(ans, 'Standard')
-  return (ans)
 }
 
 boolean_convert <- function(df, col) {
@@ -127,120 +115,28 @@ clean_cache_size <- function(string){
   return(digits)
 }
 
-cache_type_extract <- function(string){
-  if (is.na(string)) return (NA)
-  if (grepl("Last Level Cache",string)){
-    type <- 'Last Level Cache'
-    return(type)
-  }
-  else type <- str_extract(string, '\\b\\w+$')
-  if (type == 'MB' || type == 'KB') return (NA)
-  return(type)
-}
-
-bus_transfer_extract <- function(string){
-  if (is.na(string) || string == 0 || string == '0  QPI' || string == '0 GT/s' || string == '0 GT/s QPI') return (NA)
-  if (grepl("GT/s", string)){
-    transfer <- str_extract(string, '\\d+ GT/s')
-    return (transfer)
-  }
-  if (grepl("MHz", string)){
-    transfer <- str_extract(string, '\\d+ MHz')
-    return (transfer)
-  }
-  return(NA)
-}
-
-bus_type_extract <- function(string){
-  if (is.na(string) || string == 0 || string == '0  QPI' || string == '0 GT/s' || string == '0 GT/s QPI') return (NA)
-  type <- str_extract(string, '\\b\\w+$')
-  if (type == 's') return (NA)
-  return(type)
-}
-
 clean_base_frequency <- function(string) {
   # Extract the first 3 digits using regular expression
   digits <- as.numeric(substr(string, 1, nchar(string)-4))
   
-  # If the string contains "MHz", divide the number by 1000
-  if (grepl("MHz", string)) {
-    digits <- digits / 1000
+  # If the string contains "GHz", multiply the number by 1000
+  if (grepl("GHz", string)) {
+    digits <- digits * 1000
   }
   
   return(digits)
 }
 
-clean_graphics_video <- function(string) {
-  # Extract the first 3 digits using regular expression
-  digits <- as.numeric(substr(string, 1, nchar(string)-3))
+remove_outliers <- function(df, col) {
+  quartiles <- quantile(df[[col]], probs=c(.25, .75), na.rm = FALSE)
+  IQR_val <- IQR(df[[col]], na.rm = FALSE)
+
+  Lower <- quartiles[1] - 1.5*IQR_val
+  Upper <- quartiles[2] + 1.5*IQR_val 
+
+  cleaned_df <- subset(df, df[[col]] > Lower & df[[col]] < Upper)
   
-  # If the string contains "MB", divide the number by 1024
-  if (grepl("MB", string)) {
-    digits <- digits / 1024
-  }
-  
-  return(digits)
-}
-
-
-clean_graphic_output <- function(string) {
-  if (is.na(string)) return (NA)
-  string <- str_trim(string)
-  string <- gsub(",*\\s+|-", "/", string)
-  if (string == 'LVDS/MIPI') 
-    string <- 'MIPI/LVDS'
-  return (string)
-}
-
-resolution_extract <- function(string) {
-  resolution <- str_extract(string, '\\d{4}x\\d{4}')
-  return (resolution)
-}
-
-resolution_freq_extract <- function(string) {
-  freq <- str_extract(string, '\\d+Hz')
-  return (freq)  
-}
-
-latest_pci <- function(string) {
-  if (is.na(string)) return (NA)
-  if (string == 'No' || string == 'None') return (0)
-  if (grepl('1.0', string)) return (1)
-  if (grepl('3.0', string)) return (3)
-  return (2)
-}
-
-latest_directX_version <- function(string) {
-  if (is.na(string)) return (NA)
-  if (string == 'Yes') return (NA) # for later df fill (ex: mode filled)
-  if (grepl('12', string)) return ('12')
-  if (grepl('\\d+.\\d', string)) return (str_extract(string, '\\d+.\\d'))
-  
-}
-
-temperature_extract <- function(string) {
-  temp <- as.numeric(unlist((str_extract_all(string, '\\d+\\.*\\d*'))))
-  if (length(temp) == 2) return ((temp[2] + temp[1]) / 2)
-  return (temp[1])
-}
-
-custom_sort <- function(list) {
-  parts <- strsplit(list, "x")
-  
-  first_numbers <- sapply(parts, function(part) as.numeric(part[1]))
-  second_numbers <- sapply(parts, function(part) as.numeric(part[2]))
-  
-  order(first_numbers, second_numbers)
-}
-
-configuration_extract <- function(string) {
-  if (is.na(string)) return (NA)
-  config <- unlist(str_extract_all(string, '\\d*x\\d+'))
-  if (!length(config)) return (NA)
-  config <- ifelse(grepl('\\bx\\d+', config), paste0(1, config), config)
-  sorted_indices <- custom_sort(config)
-  config <- config[sorted_indices]
-  return (paste(config, collapse=' '))
+  return(cleaned_df)
 }
 
 #### APPLY ####
@@ -258,130 +154,162 @@ df$Lithography <- as.numeric(df$Lithography)
 df$Recommended_Customer_Price <- sapply(df$Recommended_Customer_Price, convert_currency_to_numeric, USE.NAMES = FALSE)
 
 df$Processor_Base_Frequency <- sapply(df$Processor_Base_Frequency, clean_base_frequency)
-df$Processor_Base_Frequency <- gsub(" GHz", '', df$Processor_Base_Frequency)
+df$Processor_Base_Frequency <- gsub(" MHz", '', df$Processor_Base_Frequency)
 df$Processor_Base_Frequency <- as.numeric(df$Processor_Base_Frequency)
 
-df$Max_Turbo_Frequency <- gsub(" GHz", '', df$Max_Turbo_Frequency)
-df$Max_Turbo_Frequency <- as.numeric(df$Max_Turbo_Frequency)
-
-#Cache
-df['Cache_size'] <- sapply(df$Cache, cache_size_extract)
-df['Cache_type'] <- sapply(df$Cache, cache_type_extract)
-df$Cache_size <- sapply(df$Cache_size, clean_cache_size)
-df$Cache_size <- gsub(" MB", '', df$Cache_size)
-df$Cache_size <- as.numeric(df$Cache_size)
-df <- df %>% select(-Cache)
-
-# Bus_Speed
-df['Bus_Transfer_or_Clock'] <- sapply(df$Bus_Speed, bus_transfer_extract)
-df['Bus_Type'] <- sapply(df$Bus_Speed, bus_type_extract)
-df <- df %>% select(-Bus_Speed)
+df$Cache <- sapply(df$Cache, cache_size_extract)
+df$Cache <- sapply(df$Cache, clean_cache_size)
+df$Cache <- gsub(" MB", '', df$Cache)
+df$Cache <- as.numeric(df$Cache)
 
 df$TDP <- gsub(" W", '', df$TDP)
 df$TDP <- as.numeric(df$TDP)
-
-df <- boolean_convert(df, 'Embedded_Options_Available')
-#df$Conflict_Free <- ifelse(is.na(df$Conflict_Free), FALSE, TRUE)
 
 df$Max_Memory_Size <- sapply(df$Max_Memory_Size, clean_max_memory_size)
 df$Max_Memory_Size <- gsub(" GB", '', df$Max_Memory_Size)
 df$Max_Memory_Size <- as.numeric(df$Max_Memory_Size)
 
-df$Memory_Types <- sapply(df$Memory_Types, mem_type_extract)
-head(df)
-
 df$Max_Memory_Bandwidth <- gsub(" GB/s", '', df$Max_Memory_Bandwidth)
 df$Max_Memory_Bandwidth <- as.numeric(df$Max_Memory_Bandwidth)
 
-df <- boolean_convert(df, 'ECC_Memory_Supported')
-
-df$Graphics_Base_Frequency <-gsub(" GHz", " MHz", df$Graphics_Base_Frequency)
 df$Graphics_Base_Frequency <- sapply(df$Graphics_Base_Frequency, clean_base_frequency)
+df$Graphics_Base_Frequency <-gsub(" MHz", '', df$Graphics_Base_Frequency)
 df$Graphics_Base_Frequency <- as.numeric(df$Graphics_Base_Frequency)
-
-df$Graphics_Max_Dynamic_Frequency <- sapply(df$Graphics_Max_Dynamic_Frequency, clean_base_frequency)
-df$Graphics_Max_Dynamic_Frequency <-gsub(" GHz", '', df$Graphics_Max_Dynamic_Frequency)
-df$Graphics_Max_Dynamic_Frequency <- as.numeric(df$Graphics_Max_Dynamic_Frequency)
-
-#df$Graphics_Video_Max_Memory <- sapply(df$Graphics_Video_Max_Memory, clean_graphics_video)
 
 df <- boolean_convert(df, 'Intel_Hyper_Threading_Technology_')
 df <- boolean_convert(df, 'Intel_Virtualization_Technology_VTx_')
-df <- boolean_convert(df, 'Intel_64_')
 
-df$Instruction_Set <- factor(ifelse(df$Instruction_Set == "", NA, df$Instruction_Set), 
-                             levels=c('Itanium 64-bit', '64-bit', '32-bit'))
-
-df <- boolean_convert(df, 'Idle_States')
-df <- boolean_convert(df, 'Thermal_Monitoring_Technologies')
-df <- boolean_convert(df, 'Secure_Key')
-df <- boolean_convert(df, 'Execute_Disable_Bit')
-
-df$Graphics_Output <- factor(sapply(df$Graphics_Output, clean_graphic_output))
-
-df['SSE_FPU'] <- str_detect(df$Instruction_Set_Extensions, 'SSE|AVX|Yes')
-df['AES'] <- str_detect(df$Instruction_Set_Extensions, 'AES')
-df['MMX'] <- str_detect(df$Instruction_Set_Extensions, 'MMX')
-
-df <- df %>% select(-Instruction_Set_Extensions)
-
-#df['HDMI_resolution'] <- factor(sapply(df$Max_Resolution_HDMI, resolution_extract))
-#df['HDMI_frequency'] <- factor(sapply(df$Max_Resolution_HDMI, resolution_freq_extract))
-
-#df['DP_resolution'] <- factor(sapply(df$Max_Resolution_DP, resolution_extract))
-#df['DP_frequency'] <- factor(sapply(df$Max_Resolution_DP, resolution_freq_extract))
-
-#df['eDP_resolution'] <- factor(sapply(df$Max_Resolution_eDP_Integrated_Flat_Panel, resolution_extract))
-#df['eDP_frequency'] <- factor(sapply(df$Max_Resolution_eDP_Integrated_Flat_Panel, resolution_freq_extract))
-
-df$PCI_Express_Revision <- factor(sapply(df$PCI_Express_Revision, latest_pci), levels=c(3, 2, 1, 0))
-
-df$T <- sapply(df$T, temperature_extract, USE.NAMES = FALSE)
-
-df$PCI_Express_Configurations_ <- factor(sapply(df$PCI_Express_Configurations_, configuration_extract))
-
-#df$DirectX_Support <- factor(sapply(df$DirectX_Support, latest_directX_version))
+df$Instruction_Set <-gsub("-bit", '', df$Instruction_Set)
+df$Instruction_Set <-gsub("Itanium ", '', df$Instruction_Set)
+df$Instruction_Set <- as.numeric(df$Instruction_Set)
 
 str(df)
 
-get_mode <- function(x) {
-  ux <- unique(x)
-  freq <- tabulate(match(x, ux))
-  max_freq_index <- which.max(freq)
-  mode_val <- ux[max_freq_index]
-  if (is.na(mode_val)) {
-    non_na_freq <- freq[!is.na(ux)]
-    non_na_index <- which.max(non_na_freq)
-    mode_val <- ux[non_na_index]
-  }
-  return(mode_val)
+#### FILLING OUT NA VALUES ####
+apply(is.na(df),2,sum) # Count the number of NA in each column
+apply(is.na(df),2,mean) # Show the NA ratio
+
+numeric_columns <- sapply(df, is.numeric)
+numeric_data <- df[, numeric_columns]
+categorical_data <- df[, !numeric_columns]
+
+# Using Random Forest to impute missing numerical values
+imputed_rf <- missForest(numeric_data)
+
+# Convert the imputed data back to a dataframe
+imputed_df <- data.frame(imputed_rf$ximp)
+str(imputed_df)
+
+# Fill the imputed values back into the original dataframe
+for (col in names(imputed_df)) {
+  df[is.na(df[[col]]), col] <- imputed_df[is.na(df[[col]]), col]
 }
 
-fill_na <- function(df) {
-  for (col in names(df)) {
-    if (is.numeric(df[[col]])) {
-      median_val <- median(df[[col]], na.rm = TRUE)
-      df[[col]][is.na(df[[col]])] <- median_val
-    } else {
-      mode_val <- as.character(get_mode(df[[col]]))
-      #cat(col, " ", mode_val, "\n")
-      df[[col]][is.na(df[[col]])] <- mode_val
-    }
-  }
-  return(df)
+# Using K-nearest neighbor to impute missing categorical values
+imputed_knn <- kNN(categorical_data)
+imputed_knn <- subset(imputed_knn, select = Product_Collection:Intel_Virtualization_Technology_VTx_)
+
+for (col in names(imputed_knn)) {
+  df[is.na(df[[col]]), col] <- imputed_knn[is.na(df[[col]]), col]
 }
-options(dplyr.width = Inf)
-df <- fill_na(df)
+
 apply(is.na(df),2,mean)
 
-# Linear regression
-model <- lm(Recommended_Customer_Price ~ ., data = df)
-summary(model)
-step_model <- step(model, direction='both')
-#df <- df %>% select(-Instruction_Set_Extensions)
+# Checking and removing the outliers
+numeric_columns <- sapply(df, is.numeric)
+numeric_data <- df[, numeric_columns]
+for (col in names(numeric_data)){
+  plot (df[[col]], df$Recommended_Customer_Price, xlab =col, ylab = "Recommended_Customer_Price")
+}
+
+dim(df)
+
+df <- remove_outliers(df, 'Graphics_Base_Frequency')
+df <- remove_outliers(df, 'Max_Memory_Size')
+
+dim(df)
+
+
+# Correlation plot for the numeric columns
+numeric_data <- select_if(df, is.numeric)
+cor_matrix <- cor(numeric_data)
+corrplot(cor_matrix,
+         method = "pie",
+         tl.cex = 0.8,           
+         addCoefasPercent = TRUE, 
+         number.cex = 0.8,      
+         mar = c(0, 0, 0, 0),    
+         cl.pos = "r",            
+         cl.ratio = 0.2,          
+         cl.offset = 1.3,)   
+cor_matrix
+
+# Shapiro-Wilk test
+shapiro.test(df$Recommended_Customer_Price)
 
 # Select 80% data as the train set and 20% as test set
 set.seed(5) # Make data reproducible
 s <-sample(seq_len(nrow(df)), size = floor(0.8*nrow(df)))
 train <-df[s, ]
 test <-df[-s, ]
+
+### Linear regression
+model <- lm(Recommended_Customer_Price ~ ., data = train)
+summary(model)
+
+# Comparing predicted values with test values
+pred_values <- data.frame(predict(model, newdata = test))
+compare <- cbind(test$Recommended_Customer_Price, pred_values)
+
+MAPE <- mean(abs((compare[,1] - compare[,2]) / compare[,1])) * 100
+cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
+
+SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
+SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
+cat("The coefficient of determination of the model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
+
+### Step-wise function
+step_model <- step(model, direction='both')
+summary(step_model)
+
+# Comparing predicted values with test values
+pred_values <- data.frame(predict(step_model, newdata = test))
+compare <- cbind(test$Recommended_Customer_Price, pred_values)
+
+MAPE <- mean(abs((compare[,1] - compare[,2]) / compare[,1])) * 100
+cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
+
+SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
+SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
+cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
+
+# Polynomial regression
+poly2 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 2) + poly(nb_of_Threads, 2) + 
+              poly(Processor_Base_Frequency, 2) + poly(TDP, 2) + poly(Max_Memory_Size, 2) + 
+              poly(Max_Memory_Bandwidth, 2) + poly(Graphics_Max_Dynamic_Frequency, 2) + 
+              poly(Max_nb_of_PCI_Express_Lanes, 2) , data = df)
+summary(poly2)
+
+poly3 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 3) + poly(nb_of_Threads, 3) + 
+              poly(Processor_Base_Frequency, 3) + poly(TDP, 3) + poly(Max_Memory_Size, 3) + 
+              poly(Max_Memory_Bandwidth, 3) + poly(Graphics_Max_Dynamic_Frequency, 3) + 
+              poly(Max_nb_of_PCI_Express_Lanes, 3) , data = df)
+summary(poly3)
+
+poly4 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 4) + poly(nb_of_Threads, 4) + 
+              poly(Processor_Base_Frequency, 4) + poly(TDP, 4) + poly(Max_Memory_Size, 4) + 
+              poly(Max_Memory_Bandwidth, 4) + poly(Graphics_Max_Dynamic_Frequency, 4) + 
+              poly(Max_nb_of_PCI_Express_Lanes, 4) , data = df)
+summary(poly4)
+
+# Comparing predicted values with test values
+pred_values2 <- data.frame(predict(poly4, newdata = test))
+compare2 <- cbind(test$Recommended_Customer_Price, pred_values2)
+colnames(compare2) <- c("test_set","prediction")
+head(compare2,10)
+
+SSE <- sum((df$Recommended_Customer_Price - pred_values2)^2)
+SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
+cat("The accuracy of the model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
+
+str(df)
