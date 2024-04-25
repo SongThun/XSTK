@@ -35,7 +35,7 @@ library('VIM')
 library('FNN')
 
 initial_df <- read.csv('Intel_CPUs.csv', na.strings = c('N/A', ''))
-str(df)
+str(initial_df)
 
 # Selecting the important columns
 df <- initial_df[, c("Product_Collection","Vertical_Segment", "Status", "Launch_Date", 
@@ -47,6 +47,7 @@ df <- initial_df[, c("Product_Collection","Vertical_Segment", "Status", "Launch_
 
 #### FUNCTIONS ####
 
+# Converting "Q4'15" -> "2015", "Q1'99" -> "1999"
 convert_year <- function(string) {
   if (!is.na(string) && grepl("'\\d{2}", string)) {
     year <- sub(".*'(\\d{2})", "\\1", string)
@@ -229,6 +230,24 @@ df <- remove_outliers(df, 'Max_Memory_Size')
 
 dim(df)
 
+# Box plot for categorical columns
+box1<-boxplot(df$Recommended_Customer_Price~df$Product_Collection, xlab = "Product Collection", ylab = "Recommended Customer Price")$stats
+abline(lm(Recommended_Customer_Price~Product_Collection,data=df),col='blue')
+box2<-boxplot(df$Recommended_Customer_Price~df$Vertical_Segment, xlab = "Vertical Segment", ylab = "Recommended Customer Price")$stats
+abline(lm(Recommended_Customer_Price~Vertical_Segment,data=df),col='blue')
+box3<-boxplot(df$Recommended_Customer_Price~df$Status, xlab = "Status", ylab = "Recommended Customer Price")$stats
+abline(lm(Recommended_Customer_Price~Status,data=df),col='blue')
+box4<-boxplot(df$Recommended_Customer_Price~df$Intel_Hyper_Threading_Technology_, xlab = "Intel Hyper Threading Technology", ylab = "Recommended Customer Price")$stats
+abline(lm(Recommended_Customer_Price~Intel_Hyper_Threading_Technology_,data=df),col='blue')
+box5<-boxplot(df$Recommended_Customer_Price~df$Intel_Virtualization_Technology_VTx_, xlab = "Intel Virtualization Technology VTx", ylab = "Recommended Customer Price")$stats
+abline(lm(Recommended_Customer_Price~Intel_Virtualization_Technology_VTx_,data=df),col='blue')
+
+
+# Scatter plot for numerical columns
+for (col in names(numeric_data)){
+  plot (df[[col]], df$Recommended_Customer_Price, xlab =col, ylab = "Recommended_Customer_Price")
+  abline(lm(Recommended_Customer_Price~df[[col]],data=df),col='blue')
+}
 
 # Correlation plot for the numeric columns
 numeric_data <- select_if(df, is.numeric)
