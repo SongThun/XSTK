@@ -127,19 +127,6 @@ clean_base_frequency <- function(string) {
   
   return(digits)
 }
-
-remove_outliers <- function(df, col) {
-  quartiles <- quantile(df[[col]], probs=c(.25, .75), na.rm = FALSE)
-  IQR_val <- IQR(df[[col]], na.rm = FALSE)
-
-  Lower <- quartiles[1] - 1.5*IQR_val
-  Upper <- quartiles[2] + 1.5*IQR_val 
-
-  cleaned_df <- subset(df, df[[col]] > Lower & df[[col]] < Upper)
-  
-  return(cleaned_df)
-}
-
 #### APPLY ####
 
 product_collect <- c('Legacy', 'Celeron', 'Pentium', 'Quark', 'Atom', 'Itanium', 'Xeon','Core')
@@ -184,8 +171,6 @@ df$Instruction_Set <-gsub("-bit", '', df$Instruction_Set)
 df$Instruction_Set <-gsub("Itanium ", '', df$Instruction_Set)
 df$Instruction_Set <- as.numeric(df$Instruction_Set)
 
-str(df)
-
 #### FILLING OUT NA VALUES ####
 apply(is.na(df),2,sum) # Count the number of NA in each column
 apply(is.na(df),2,mean) # Show the NA ratio
@@ -216,6 +201,25 @@ for (col in names(imputed_knn)) {
 
 apply(is.na(df),2,mean)
 
+### Outliers ###
+# Check for outliers
+plot(df$Recommended_Customer_Price~df$Launch_Date)
+plot(df$Recommended_Customer_Price~df$Lithography)
+plot(df$Recommended_Customer_Price~df$nb_of_Cores)
+plot(df$Recommended_Customer_Price~df$nb_of_Threads)
+plot(df$Recommended_Customer_Price~df$Processor_Base_Frequency)
+plot(df$Recommended_Customer_Price~df$Cache)
+plot(df$Recommended_Customer_Price~df$TDP)
+plot(df$Recommended_Customer_Price~df$Max_Memory_Size)
+plot(df$Recommended_Customer_Price~df$Max_Memory_Bandwidth)
+plot(df$Recommended_Customer_Price~df$Graphics_Base_Frequency)
+plot(df$Recommended_Customer_Price~df$Instruction_Set)
+
+# Delete for outliers
+df <- df[df$nb_of_Cores <= 50, ]
+df <- df[df$Max_Memory_Bandwidth <= 200, ]
+df <- df[df$Graphics_Base_Frequency <= 300000, ]
+
 # Box plot for categorical columns
 box1<-boxplot(df$Recommended_Customer_Price~df$Product_Collection, xlab = "Product Collection", ylab = "Recommended Customer Price")$stats
 abline(lm(Recommended_Customer_Price~Product_Collection,data=df),col='blue')
@@ -240,6 +244,7 @@ numeric_data <- select_if(df, is.numeric)
 cor_matrix <- cor(numeric_data)
 corrplot(cor_matrix,
          method = "pie",
+         addCoef.col = "red",
          tl.cex = 0.8,           
          addCoefasPercent = TRUE, 
          number.cex = 0.8,      
@@ -251,6 +256,27 @@ cor_matrix
 
 # Shapiro-Wilk test
 shapiro.test(df$Recommended_Customer_Price)
+
+VS <- factor(df$Vertical_Segment)
+RCP <- df$Recommended_Customer_Price 
+
+table(df$Vertical_Segment)
+
+shapiro.test(RCP[VS=="Desktop"])
+shapiro.test(RCP[VS=="Embedded"])
+shapiro.test(RCP[VS=="Mobile"])
+shapiro.test(RCP[VS=="Server"])
+
+leveneTest(RCP~VS)
+
+# One-way Anova
+#H0: u1 = u2 = ... = ui = 0: There is a similarity in average Recommended Customer Price among 4 segments: Desktop, Embedded, Mobile and Server.
+#H1: ui ̸= 0 for at least one of the segment have a significant different in Recommended Customer Price compared to others
+av <- aov(RCP~VS, data = df)
+av
+summary(av)
+
+TukeyHSD(av)
 
 # Select 80% data as the train set and 20% as test set
 set.seed(5) # Make data reproducible
