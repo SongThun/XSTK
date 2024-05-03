@@ -281,6 +281,7 @@ SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
+# Residual plot
 res <- resid(model)
 plot(fitted(model), res)
 abline(0,0)
@@ -300,6 +301,7 @@ SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
+# Residual plot
 res <- resid(step_model)
 plot(fitted(step_model), res)
 abline(0,0)
@@ -322,6 +324,7 @@ SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
+# Residual plot
 res <- resid(poly2)
 plot(fitted(poly2), res)
 abline(0,0)
@@ -343,6 +346,7 @@ SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
+# Residual plot
 res <- resid(poly3)
 plot(fitted(poly3), res)
 abline(0,0)
