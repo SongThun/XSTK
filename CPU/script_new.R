@@ -202,7 +202,7 @@ for (col in names(imputed_knn)) {
 apply(is.na(df),2,mean)
 
 ### Outliers ###
-# Check for outliers
+# Check for outliers in the numerical columns
 plot(df$Recommended_Customer_Price~df$Launch_Date)
 plot(df$Recommended_Customer_Price~df$Lithography)
 plot(df$Recommended_Customer_Price~df$nb_of_Cores)
