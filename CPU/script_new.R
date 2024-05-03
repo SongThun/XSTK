@@ -215,10 +215,17 @@ plot(df$Recommended_Customer_Price~df$Max_Memory_Bandwidth)
 plot(df$Recommended_Customer_Price~df$Graphics_Base_Frequency)
 plot(df$Recommended_Customer_Price~df$Instruction_Set)
 
-# Delete for outliers
+# Delete outliers
+# The number of rows to delete
+nrow(df[df$nb_of_Cores > 50, ])
+nrow(df[df$Max_Memory_Bandwidth > 200, ])
+nrow(df[df$Graphics_Base_Frequency > 300000, ])
+
+# Delete
 df <- df[df$nb_of_Cores <= 50, ]
 df <- df[df$Max_Memory_Bandwidth <= 200, ]
 df <- df[df$Graphics_Base_Frequency <= 300000, ]
+
 
 # Box plot for categorical columns
 box1<-boxplot(df$Recommended_Customer_Price~df$Product_Collection, xlab = "Product Collection", ylab = "Recommended Customer Price")$stats
@@ -244,7 +251,6 @@ numeric_data <- select_if(df, is.numeric)
 cor_matrix <- cor(numeric_data)
 corrplot(cor_matrix,
          method = "pie",
-         addCoef.col = "red",
          tl.cex = 0.8,           
          addCoefasPercent = TRUE, 
          number.cex = 0.8,      
@@ -253,30 +259,6 @@ corrplot(cor_matrix,
          cl.ratio = 0.2,          
          cl.offset = 1.3,)   
 cor_matrix
-
-# Shapiro-Wilk test
-shapiro.test(df$Recommended_Customer_Price)
-
-VS <- factor(df$Vertical_Segment)
-RCP <- df$Recommended_Customer_Price 
-
-table(df$Vertical_Segment)
-
-shapiro.test(RCP[VS=="Desktop"])
-shapiro.test(RCP[VS=="Embedded"])
-shapiro.test(RCP[VS=="Mobile"])
-shapiro.test(RCP[VS=="Server"])
-
-leveneTest(RCP~VS)
-
-# One-way Anova
-#H0: u1 = u2 = ... = ui = 0: There is a similarity in average Recommended Customer Price among 4 segments: Desktop, Embedded, Mobile and Server.
-#H1: ui ̸= 0 for at least one of the segment have a significant different in Recommended Customer Price compared to others
-av <- aov(RCP~VS, data = df)
-av
-summary(av)
-
-TukeyHSD(av)
 
 # Select 80% data as the train set and 20% as test set
 set.seed(5) # Make data reproducible
@@ -299,6 +281,10 @@ SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
+res <- resid(model)
+plot(fitted(model), res)
+abline(0,0)
+
 ### Step-wise function
 step_model <- step(model, direction='both')
 summary(step_model)
@@ -313,6 +299,10 @@ cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
 SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
+
+res <- resid(step_model)
+plot(fitted(step_model), res)
+abline(0,0)
 
 # Polynomial regression
 poly2 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 2) + poly(Lithography, 2) + poly(nb_of_Cores, 2) +
@@ -332,6 +322,10 @@ SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
+res <- resid(poly2)
+plot(fitted(poly2), res)
+abline(0,0)
+
 poly3 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 3) + poly(Lithography, 3) + poly(nb_of_Cores, 3) + 
               poly(nb_of_Threads, 3) + poly(Processor_Base_Frequency, 3) + poly(TDP, 3) + poly(Cache, 3) +
               poly(Max_Memory_Size, 3) + poly(Max_Memory_Bandwidth, 3) + poly(Graphics_Base_Frequency, 3) +
@@ -349,6 +343,10 @@ SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
+res <- resid(poly3)
+plot(fitted(poly3), res)
+abline(0,0)
+
 poly4 <- lm(Recommended_Customer_Price ~ poly(Launch_Date, 4) + poly(Lithography, 4) + poly(nb_of_Cores, 4) + 
               poly(nb_of_Threads, 4) + poly(Processor_Base_Frequency, 4) + poly(TDP, 4) + poly(Cache, 4) +
               poly(Max_Memory_Size, 4) + poly(Max_Memory_Bandwidth, 4) + poly(Graphics_Base_Frequency, 4) +
@@ -365,3 +363,8 @@ cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
 SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
+
+# Residual plot
+res <- resid(poly4)
+plot(fitted(poly4), res)
+abline(0,0)
