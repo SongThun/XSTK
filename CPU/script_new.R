@@ -250,8 +250,6 @@ for (i in 1:length(table_result3)) {
   print(paste(names(table_result3)[i], ":", table_result3[i]))
 }
 
-par(mfrow=c(1,2))
-
 # Plot the boxplot
 boxplot(df$Recommended_Customer_Price ~ df$Product_Collection, 
         xlab = "Product Collection", 
@@ -364,7 +362,7 @@ cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
 
 SSE <- sum((test$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((test$Recommended_Customer_Price - mean(test$Recommended_Customer_Price))^2)
-cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
+cat("The coefficient of determination of the Quadratic Polynomial model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
 # Residual plot
 res <- resid(poly2)
@@ -386,7 +384,7 @@ cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
 
 SSE <- sum((test$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((test$Recommended_Customer_Price - mean(test$Recommended_Customer_Price))^2)
-cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
+cat("The coefficient of determination of the Cubic Polynomial model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
 # Residual plot
 res <- resid(poly3)
@@ -408,7 +406,7 @@ cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
 
 SSE <- sum((test$Recommended_Customer_Price - pred_values)^2)
 SST <- sum((test$Recommended_Customer_Price - mean(test$Recommended_Customer_Price))^2)
-cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
+cat("The coefficient of determination of the Quartic Polynomial model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
 # Residual plot
 res <- resid(poly4)
