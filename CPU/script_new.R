@@ -264,6 +264,7 @@ hist(df$Recommended_Customer_Price,
      xlab = "Recommended Customer Price", 
      ylab = "Frequency", 
      col = "skyblue")
+boxplot(df$Recommended_Customer_Price, main = "Recommended Customer Price", ylab = "Price (USD)")
 
 # ==========================================================================
 
