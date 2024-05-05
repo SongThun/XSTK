@@ -226,6 +226,47 @@ df <- df[df$nb_of_Cores <= 50, ]
 df <- df[df$Max_Memory_Bandwidth <= 200, ]
 df <- df[df$Graphics_Base_Frequency <= 300000, ]
 
+# ==========================================================================
+summary(df)
+table_result <- table(df$Product_Collection)
+most_common <- names(sort(table_result,decreasing=TRUE))[1]
+least_common <- names(sort(table_result))[1]
+table(df$Product_Collection)
+print(paste("Most common value: ",most_common))
+print(paste("Least common value: ", least_common))
+
+# Assuming df is your dataframe and Product_Collection is the categorical variable
+table_result <- table(df$Product_Collection)
+table_result2 <- table(df$Vertical_Segment)
+table_result3 <- table(df$Status)
+# Iterate over each line of the table and print
+for (i in 1:length(table_result)) {
+  print(paste(names(table_result)[i], ":", table_result[i]))
+}
+for (i in 1:length(table_result2)) {
+  print(paste(names(table_result2)[i], ":", table_result2[i]))
+}
+for (i in 1:length(table_result3)) {
+  print(paste(names(table_result3)[i], ":", table_result3[i]))
+}
+
+par(mfrow=c(1,2))
+
+# Plot the boxplot
+boxplot(df$Recommended_Customer_Price ~ df$Product_Collection, 
+        xlab = "Product Collection", 
+        ylab = "Recommended Customer Price")
+abline(lm(Recommended_Customer_Price ~ Product_Collection, data = df), col = 'blue')
+
+# Plot the histogram
+hist(df$Recommended_Customer_Price, 
+     main = "Histogram of Recommended Customer Price", 
+     xlab = "Recommended Customer Price", 
+     ylab = "Frequency", 
+     col = "skyblue")
+
+# ==========================================================================
+
 
 # Box plot for categorical columns
 box1<-boxplot(df$Recommended_Customer_Price~df$Product_Collection, xlab = "Product Collection", ylab = "Recommended Customer Price")$stats
@@ -277,8 +318,8 @@ compare <- cbind(test$Recommended_Customer_Price, pred_values)
 MAPE <- mean(abs((compare[,1] - compare[,2]) / compare[,1])) * 100
 cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
 
-SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
-SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
+SSE <- sum((test$Recommended_Customer_Price - pred_values)^2)
+SST <- sum((test$Recommended_Customer_Price - mean(test$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
 # Residual plot
@@ -297,8 +338,8 @@ compare <- cbind(test$Recommended_Customer_Price, pred_values)
 MAPE <- mean(abs((compare[,1] - compare[,2]) / compare[,1])) * 100
 cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
 
-SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
-SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
+SSE <- sum((test$Recommended_Customer_Price - pred_values)^2)
+SST <- sum((test$Recommended_Customer_Price - mean(test$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
 # Residual plot
@@ -320,8 +361,8 @@ compare <- cbind(test$Recommended_Customer_Price, pred_values)
 MAPE <- mean(abs((compare[,1] - compare[,2]) / compare[,1])) * 100
 cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
 
-SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
-SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
+SSE <- sum((test$Recommended_Customer_Price - pred_values)^2)
+SST <- sum((test$Recommended_Customer_Price - mean(test$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
 # Residual plot
@@ -342,8 +383,8 @@ compare <- cbind(test$Recommended_Customer_Price, pred_values)
 MAPE <- mean(abs((compare[,1] - compare[,2]) / compare[,1])) * 100
 cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
 
-SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
-SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
+SSE <- sum((test$Recommended_Customer_Price - pred_values)^2)
+SST <- sum((test$Recommended_Customer_Price - mean(test$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
 # Residual plot
@@ -364,8 +405,8 @@ compare <- cbind(test$Recommended_Customer_Price, pred_values)
 MAPE <- mean(abs((compare[,1] - compare[,2]) / compare[,1])) * 100
 cat("Mean Absolute Percentage Error (MAPE):", MAPE, "%\n")
 
-SSE <- sum((df$Recommended_Customer_Price - pred_values)^2)
-SST <- sum((df$Recommended_Customer_Price - mean(df$Recommended_Customer_Price))^2)
+SSE <- sum((test$Recommended_Customer_Price - pred_values)^2)
+SST <- sum((test$Recommended_Customer_Price - mean(test$Recommended_Customer_Price))^2)
 cat("The coefficient of determination of the step_model on test set: " , round((1 - SSE / SST )* 100 ,2) , "%" )
 
 # Residual plot
